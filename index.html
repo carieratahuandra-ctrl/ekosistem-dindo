@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Harmoni Dalam Ekosistem</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4ADE80;
+            --secondary: #38BDF8;
+            --accent: #FDE047;
+            --warning: #FB923C;
+            --dark: #1F2937;
+            --light: #F8FAFC;
+        }
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #e0f2fe;
+            color: var(--dark);
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+        .app-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #a7f3d0 0%, #e0f2fe 100%);
+        }
+        
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow-y: auto;
+            padding-bottom: 2rem;
+        }
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-15px); } 100% { transform: translateY(0px); } }
+        @keyframes pulse-soft { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes cloudMove { from { background-position: 0% 0; } to { background-position: 100% 0; } }
+
+        .floating { animation: float 4s ease-in-out infinite; }
+        .pulsing { animation: pulse-soft 2s infinite; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 4px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1), inset 0 0 15px rgba(255,255,255,0.5);
+            border-radius: 2rem;
+        }
+
+        .btn-game {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border-bottom-width: 8px;
+            border-right-width: 2px;
+            border-left-width: 2px;
+            border-top-width: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+        }
+        .btn-game:active {
+            transform: translateY(6px);
+            border-bottom-width: 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .btn-green { background-color: #4ade80; border-color: #16a34a; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .btn-blue { background-color: #38bdf8; border-color: #0284c7; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .btn-orange { background-color: #fb923c; border-color: #ea580c; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .btn-yellow { background-color: #facc15; border-color: #ca8a04; color: #713f12; text-shadow: 1px 1px 0px rgba(255,255,255,0.5); }
+        .btn-purple { background-color: #c084fc; border-color: #7e22ce; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .btn-red { background-color: #f87171; border-color: #dc2626; color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+
+        .bg-clouds {
+            background-image: url('data:image/svg+xml;utf8,<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg"><path d="M50 80 Q60 60 80 70 Q100 50 120 70 Q140 60 150 80 Z" fill="rgba(255,255,255,0.5)"/></svg>');
+            animation: cloudMove 60s linear infinite;
+        }
+
+        svg.connections {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .node { position: relative; z-index: 10; }
+
+        ::-webkit-scrollbar { width: 14px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.4); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+
+        #modal-overlay {
+            display: none;
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 100; justify-content: center; align-items: center;
+        }
+        #modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="absolute top-4 left-4 right-4 z-50 flex justify-between pointer-events-none">
+        <div class="pointer-events-auto flex gap-3">
+            <button onclick="nav.goHome()" class="btn-game btn-blue p-3 rounded-2xl flex items-center justify-center w-16 h-16" title="Beranda">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            </button>
+            <button id="btn-back" onclick="nav.goBack()" class="btn-game btn-orange p-3 rounded-2xl hidden items-center justify-center w-16 h-16" title="Kembali">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            </button>
+        </div>
+        <div class="pointer-events-auto flex gap-3">
+            <button onclick="audio.toggle()" class="btn-game btn-yellow p-3 rounded-2xl flex items-center justify-center w-16 h-16" id="btn-sound" title="Suara">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+            </button>
+            <button onclick="ui.toggleFullScreen()" class="btn-game btn-blue p-3 rounded-2xl flex items-center justify-center w-16 h-16" title="Layar Penuh">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <div id="screen-home" class="screen active bg-clouds items-center justify-center">
+        <div class="text-center z-10 p-10 glass-panel max-w-4xl mx-auto flex flex-col items-center">
+            <h2 class="text-3xl font-bold text-teal-600 mb-2 uppercase tracking-widest bg-white/50 px-6 py-2 rounded-full inline-block">IPAS Kelas V SD</h2>
+            <h1 class="text-5xl md:text-7xl font-black text-emerald-600 mb-4 drop-shadow-sm leading-tight">HARMONI DALAM<br>EKOSISTEM</h1>
+            <p class="text-2xl md:text-3xl text-orange-500 font-bold mb-8">Petualangan Rantai & Jaring-Jaring Makanan</p>
+            
+            <!-- Hero Illustration (Cute SVG) -->
+            <div class="flex justify-center items-center gap-10 mb-10 floating">
+                <!-- Cute Sun -->
+                <svg class="w-28 h-28 text-yellow-400 pulsing" viewBox="0 0 100 100" fill="currentColor">
+                    <circle cx="50" cy="50" r="25"/>
+                    <path d="M50 5 L50 15 M50 85 L50 95 M5 50 L15 50 M85 50 L95 50 M18 18 L25 25 M75 75 L82 82 M18 82 L25 75 M75 18 L82 25" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>
+                    <!-- Sunglasses -->
+                    <path d="M 35 45 Q 40 50 45 45 Q 50 50 55 45 Q 60 50 65 45" fill="none" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+                    <rect x="30" y="42" width="16" height="8" rx="4" fill="#333"/>
+                    <rect x="54" y="42" width="16" height="8" rx="4" fill="#333"/>
+                    <path d="M 46 44 L 54 44" stroke="#333" stroke-width="2"/>
+                    <!-- Smile -->
+                    <path d="M 42 60 Q 50 68 58 60" fill="none" stroke="#333" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                <!-- Cute Frog -->
+                <svg class="w-24 h-24 text-green-500" viewBox="0 0 100 100" fill="currentColor">
+                    <path d="M20 70 Q50 95 80 70 Q95 40 80 25 Q50 5 20 25 Q5 40 20 70 Z" />
+                    <circle cx="35" cy="35" r="10" fill="white"/>
+                    <circle cx="35" cy="35" r="5" fill="#1f2937"/>
+                    <circle cx="65" cy="35" r="10" fill="white"/>
+                    <circle cx="65" cy="35" r="5" fill="#1f2937"/>
+                    <!-- Blush -->
+                    <circle cx="25" cy="45" r="6" fill="#fca5a5" opacity="0.8"/>
+                    <circle cx="75" cy="45" r="6" fill="#fca5a5" opacity="0.8"/>
+                    <!-- Smile -->
+                    <path d="M40 55 Q50 65 60 55" stroke="#14532d" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </svg>
+            </div>
+
+            <div class="flex flex-wrap justify-center gap-6 w-full">
+                <button onclick="nav.go('screen-map')" class="btn-game btn-green text-2xl py-4 px-10 rounded-full w-full md:w-auto pulsing">
+                    MULAI PETUALANGAN
+                </button>
+                <button onclick="nav.go('screen-objectives')" class="btn-game btn-blue text-xl py-4 px-8 rounded-full w-full md:w-auto">
+                    TUJUAN BELAJAR
+                </button>
+                <button onclick="nav.go('screen-profile')" class="btn-game btn-orange text-xl py-4 px-8 rounded-full w-full md:w-auto">
+                    PROFIL PEMBUAT
+                </button>
+            </div>
+            
+            <p class="mt-8 text-lg font-bold text-teal-700 bg-white/60 px-4 py-1 rounded-full">Disusun oleh: Dindo Noto Sastro, S.Pd.</p>
+        </div>
+    </div>
+
+    <div id="screen-objectives" class="screen bg-clouds p-8 pt-28">
+        <div class="max-w-5xl mx-auto w-full glass-panel p-8">
+            <h1 class="text-4xl font-black text-sky-600 mb-8 text-center bg-white/50 py-3 rounded-2xl inline-block px-10 w-full">TUJUAN PEMBELAJARAN</h1>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-lg font-semibold text-gray-700">
+                <div class="bg-white/80 p-6 rounded-2xl flex items-start gap-4 border-l-8 border-sky-400 shadow-md transform transition hover:scale-105">
+                    <div class="bg-sky-400 text-white rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 font-black text-xl">1</div>
+                    <p>Mengidentifikasi komponen biotik dan abiotik serta perannya dalam ekosistem.</p>
+                </div>
+                <div class="bg-white/80 p-6 rounded-2xl flex items-start gap-4 border-l-8 border-green-400 shadow-md transform transition hover:scale-105">
+                    <div class="bg-green-400 text-white rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 font-black text-xl">2</div>
+                    <p>Menjelaskan peran produsen, konsumen, dan pengurai dalam hubungan makan-dimakan.</p>
+                </div>
+                <div class="bg-white/80 p-6 rounded-2xl flex items-start gap-4 border-l-8 border-yellow-400 shadow-md transform transition hover:scale-105">
+                    <div class="bg-yellow-400 text-white rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 font-black text-xl">3</div>
+                    <p>Menyusun diagram rantai makanan dengan urutan dan arah panah yang tepat.</p>
+                </div>
+                <div class="bg-white/80 p-6 rounded-2xl flex items-start gap-4 border-l-8 border-orange-400 shadow-md transform transition hover:scale-105">
+                    <div class="bg-orange-400 text-white rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 font-black text-xl">4</div>
+                    <p>Membedakan rantai makanan dan jaring-jaring makanan dengan jelas.</p>
+                </div>
+                <div class="bg-white/80 p-6 rounded-2xl flex items-start gap-4 border-l-8 border-purple-400 shadow-md transform transition hover:scale-105">
+                    <div class="bg-purple-400 text-white rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 font-black text-xl">5</div>
+                    <p>Menganalisis kemungkinan dampak perubahan populasi suatu organisme terhadap ekosistem.</p>
+                </div>
+                <div class="bg-white/80 p-6 rounded-2xl flex items-start gap-4 border-l-8 border-teal-400 shadow-md transform transition hover:scale-105">
+                    <div class="bg-teal-400 text-white rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 font-black text-xl">6</div>
+                    <p>Mengusulkan tindakan nyata untuk menjaga keseimbangan ekosistem.</p>
+                </div>
+            </div>
+            <div class="mt-10 text-center">
+                <button onclick="nav.go('screen-map')" class="btn-game btn-green text-2xl py-4 px-12 rounded-full shadow-lg">LANJUT KE PETA 🗺️</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-map" class="screen p-8 pt-24 items-center relative" style="background: linear-gradient(to bottom, #bbf7d0, #86efac);">
+        <h1 class="text-5xl font-black text-emerald-800 mb-2 z-10 text-center drop-shadow-md">PETA PETUALANGAN</h1>
+        <p class="text-2xl font-bold text-emerald-900 mb-8 z-10 text-center bg-white/70 px-8 py-3 rounded-full inline-block shadow-sm">Pilih dunia yang ingin kamu jelajahi!</p>
+        
+        <div class="relative w-full max-w-5xl h-[65vh] glass-panel overflow-hidden p-8 flex flex-col justify-around">
+            <svg class="absolute inset-0 w-full h-full pointer-events-none" preserveAspectRatio="none">
+                <path d="M 15% 25% C 35% 25%, 35% 55%, 55% 55% C 75% 55%, 75% 85%, 85% 85%" stroke="#4ade80" stroke-width="12" stroke-dasharray="20 15" stroke-linecap="round" fill="none" opacity="0.6"/>
+            </svg>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10 h-full place-content-center place-items-center">
+                
+                <button onclick="nav.go('screen-w1')" class="btn-game bg-white border-green-500 rounded-3xl p-6 w-64 text-center group">
+                    <div class="text-6xl mb-3 transform transition group-hover:scale-110 group-hover:-translate-y-2">🌍</div>
+                    <h3 class="text-2xl font-black text-green-600 mb-1">Dunia 1</h3>
+                    <p class="font-semibold text-gray-600">Eksplorasi Ekosistem</p>
+                </button>
+
+                <button onclick="nav.go('screen-w2')" class="btn-game bg-white border-sky-500 rounded-3xl p-6 w-64 text-center group">
+                    <div class="text-6xl mb-3 transform transition group-hover:scale-110 group-hover:-translate-y-2">🌾</div>
+                    <h3 class="text-2xl font-black text-sky-600 mb-1">Dunia 2</h3>
+                    <p class="font-semibold text-gray-600">Rantai Makanan</p>
+                </button>
+
+                <button onclick="nav.go('screen-w3')" class="btn-game bg-white border-orange-500 rounded-3xl p-6 w-64 text-center group">
+                    <div class="text-6xl mb-3 transform transition group-hover:scale-110 group-hover:-translate-y-2">🕸️</div>
+                    <h3 class="text-2xl font-black text-orange-600 mb-1">Dunia 3</h3>
+                    <p class="font-semibold text-gray-600">Jaring Kehidupan</p>
+                </button>
+
+                <button onclick="nav.go('screen-w4')" class="btn-game bg-white border-purple-500 rounded-3xl p-6 w-64 text-center group">
+                    <div class="text-6xl mb-3 transform transition group-hover:scale-110 group-hover:-translate-y-2">🧪</div>
+                    <h3 class="text-2xl font-black text-purple-600 mb-1">Dunia 4</h3>
+                    <p class="font-semibold text-gray-600">Lab Ekosistem</p>
+                </button>
+
+                <button onclick="nav.go('screen-w5')" class="btn-game bg-white border-red-500 rounded-3xl p-6 w-64 text-center group">
+                    <div class="text-6xl mb-3 transform transition group-hover:scale-110 group-hover:-translate-y-2">🛡️</div>
+                    <h3 class="text-2xl font-black text-red-600 mb-1">Dunia 5</h3>
+                    <p class="font-semibold text-gray-600">Penjaga Ekosistem</p>
+                </button>
+
+                <button onclick="quiz.start()" class="btn-game btn-yellow rounded-3xl p-6 w-64 text-center pulsing">
+                    <div class="text-6xl mb-3">🏆</div>
+                    <h3 class="text-2xl font-black mb-1">KUIS EVALUASI</h3>
+                </button>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-w1" class="screen p-6 pt-24" style="background: linear-gradient(135deg, #dcfce7, #ecfdf5);">
+        <h1 class="text-4xl font-black text-center text-green-700 mb-4 bg-white/60 mx-auto w-max px-8 py-2 rounded-full">DUNIA 1: Eksplorasi Ekosistem</h1>
+        
+        <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+            <div class="glass-panel p-6 flex flex-col relative overflow-hidden">
+                <h2 class="text-2xl font-bold text-center mb-4 bg-green-400 text-white p-3 rounded-2xl shadow-sm">Ketuk benda untuk melihat perannya!</h2>
+                <div class="relative flex-grow bg-white/50 rounded-2xl border-4 border-dashed border-green-300 overflow-hidden flex flex-wrap justify-center items-center gap-6 p-6" id="w1-objects">
+                    <!-- Objects populated by JS -->
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-6">
+                <div class="glass-panel p-8 min-h-[300px] flex flex-col justify-center items-center text-center transition-all duration-300" id="w1-info">
+                    <div class="text-7xl mb-4 text-gray-400 opacity-50 animate-bounce">👆</div>
+                    <h3 class="text-3xl font-black text-gray-400">Pilih satu objek di samping</h3>
+                </div>
+
+                <div class="glass-panel p-6 bg-orange-50/80 border-orange-200">
+                    <h3 class="text-2xl font-black text-center text-orange-600 mb-4">Permainan: Pisahkan Komponen!</h3>
+                    <p class="text-center font-bold mb-4 text-gray-700">Ketuk objek di sebelah kiri, lalu ketuk kotak di bawah ini:</p>
+                    <div class="flex justify-center gap-4">
+                        <button onclick="w1.sort('biotik')" class="btn-game btn-green p-6 rounded-2xl w-1/2 text-2xl shadow-lg leading-tight">🌱 BIOTIK<br><span class="text-sm font-semibold opacity-90">(Makhluk Hidup)</span></button>
+                        <button onclick="w1.sort('abiotik')" class="btn-game btn-blue p-6 rounded-2xl w-1/2 text-2xl shadow-lg leading-tight">🪨 ABIOTIK<br><span class="text-sm font-semibold opacity-90">(Tak Hidup)</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-w2" class="screen p-6 pt-24 flex-col" style="background: linear-gradient(135deg, #e0f2fe, #bae6fd);">
+        <h1 class="text-4xl font-black text-center text-sky-700 mb-4 bg-white/60 mx-auto w-max px-8 py-2 rounded-full">DUNIA 2: Rantai Makanan</h1>
+        <p class="text-xl font-semibold text-center text-gray-700 mb-6 bg-white/80 p-4 rounded-full max-w-4xl mx-auto shadow-md">
+            Rantai makanan adalah perjalanan memakan dan dimakan dengan urutan tertentu. Panah (<span class="text-red-500 font-black text-2xl align-middle">➔</span>) berarti "Dimakan Oleh" atau perpindahan energi!
+        </p>
+
+        <div class="max-w-6xl mx-auto glass-panel p-8 w-full flex-grow flex flex-col">
+            <h2 class="text-3xl font-black text-center text-orange-500 mb-6 drop-shadow-sm">Mini-Game: Susun Rantai Makanan</h2>
+            <p class="text-center font-semibold text-gray-600 mb-8 text-lg">Ketuk makhluk hidup di kotak abu-abu bawah, lalu ketuk kotak kosong di atas untuk memindahkannya.</p>
+
+            <div class="flex justify-center items-center gap-2 mb-12 flex-wrap min-h-[220px]" id="w2-slots">
+                <!-- Slots populated by JS -->
+            </div>
+
+            <div class="bg-gray-100/80 p-6 rounded-3xl flex justify-center gap-4 flex-wrap mb-8 border-4 border-gray-200" id="w2-pool">
+                <!-- Objects populated by JS -->
+            </div>
+
+            <div class="flex justify-center gap-6 mt-auto">
+                <button onclick="w2.check()" class="btn-game btn-green text-2xl py-4 px-12 rounded-full">PERIKSA JAWABAN</button>
+                <button onclick="w2.reset()" class="btn-game btn-orange text-xl py-4 px-8 rounded-full">ULANGI</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-w3" class="screen p-6 pt-24" style="background: linear-gradient(135deg, #f3e8ff, #d8b4fe);">
+        <h1 class="text-4xl font-black text-center text-purple-700 mb-4 bg-white/60 mx-auto w-max px-8 py-2 rounded-full">DUNIA 3: Jaring-Jaring Makanan</h1>
+        <p class="text-xl font-semibold text-center text-gray-700 mb-6 max-w-4xl mx-auto bg-white/80 p-4 rounded-full shadow-md">
+            Kumpulan beberapa rantai makanan yang saling berhubungan. Satu makhluk hidup bisa makan/dimakan oleh lebih dari satu jenis!
+        </p>
+
+        <div class="max-w-6xl mx-auto glass-panel p-4 relative h-[65vh] overflow-hidden" id="w3-canvas-container">
+            <div class="absolute top-6 left-6 z-20 glass-panel p-6 border-purple-200 max-w-xs">
+                <p class="font-black text-xl text-purple-700 mb-2">Tugasmu: Hubungkan Jaring Makanan!</p>
+                <p class="font-semibold text-gray-700 mb-1">1. Ketuk organisme yang DIMAKAN.</p>
+                <p class="font-semibold text-gray-700 mb-4">2. Ketuk organisme yang MEMAKAN.</p>
+                <button onclick="w3.check()" class="btn-game btn-green py-3 w-full rounded-xl text-lg">Cek Hubungan</button>
+            </div>
+            
+            <svg id="w3-svg" class="connections"></svg>
+            <div id="w3-nodes" class="absolute inset-0">
+                <!-- Nodes populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-w4" class="screen p-6 pt-24" style="background: linear-gradient(135deg, #f1f5f9, #cbd5e1);">
+        <h1 class="text-4xl font-black text-center text-slate-700 mb-6 bg-white/60 mx-auto w-max px-8 py-2 rounded-full">DUNIA 4: Lab Keseimbangan Ekosistem</h1>
+        
+        <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 h-[70vh]">
+            <div class="glass-panel p-6 flex flex-col gap-4 overflow-y-auto">
+                <h2 class="text-2xl font-black text-teal-600 mb-2">Pilih Skenario:</h2>
+                <button onclick="w4.loadScenario('A')" class="btn-game bg-sky-100 border-sky-400 p-4 rounded-2xl text-left text-slate-700">
+                    <div class="font-black text-xl mb-1">A. Ular Berkurang</div>
+                    <div class="font-semibold text-sm">Banyak ular diburu. Apa dampaknya?</div>
+                </button>
+                <button onclick="w4.loadScenario('B')" class="btn-game bg-green-100 border-green-400 p-4 rounded-2xl text-left text-slate-700">
+                    <div class="font-black text-xl mb-1">B. Katak Menurun</div>
+                    <div class="font-semibold text-sm">Katak hilang karena penyakit.</div>
+                </button>
+                <button onclick="w4.loadScenario('C')" class="btn-game bg-red-100 border-red-400 p-4 rounded-2xl text-left text-slate-700">
+                    <div class="font-black text-xl mb-1">C. Pestisida Berlebih</div>
+                    <div class="font-semibold text-sm">Semua serangga mati.</div>
+                </button>
+            </div>
+
+            <div class="col-span-2 glass-panel p-8 flex flex-col items-center justify-center relative">
+                <h2 id="w4-title" class="text-3xl font-black text-teal-800 mb-8 text-center bg-white/80 px-6 py-2 rounded-2xl">Pilih skenario di samping</h2>
+                <div id="w4-visual" class="flex gap-10 items-end h-72 w-full justify-center mb-8 border-b-4 border-slate-300 pb-4">
+                    <!-- Bars populated by JS -->
+                </div>
+                <div id="w4-feedback" class="bg-white/80 p-6 rounded-2xl w-full border-4 border-teal-200 text-xl font-semibold text-center text-teal-900 min-h-[100px] flex items-center justify-center shadow-inner">
+                    Klik tombol skenario untuk melihat simulasi dampak perubahan populasi.
+                </div>
+                <button onclick="w4.reset()" class="btn-game btn-orange mt-6 px-8 py-3 rounded-full text-xl hidden" id="btn-w4-reset">Pulihkan Kondisi</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-w5" class="screen p-6 pt-24" style="background: linear-gradient(135deg, #fee2e2, #fca5a5);">
+        <h1 class="text-4xl font-black text-center text-red-700 mb-6 bg-white/60 mx-auto w-max px-8 py-2 rounded-full">DUNIA 5: Tantangan Penjaga Ekosistem</h1>
+        
+        <div class="max-w-5xl mx-auto glass-panel overflow-hidden flex flex-col h-[70vh]">
+            <div class="bg-red-100/90 p-8 border-b-4 border-red-200 shadow-sm">
+                <h2 class="text-2xl font-black text-red-800 mb-2 flex items-center gap-2"><span>📂</span> Kasus: Sawah Desa Makmur</h2>
+                <p class="text-lg font-semibold text-gray-800 leading-relaxed">"Petani mengeluhkan hama merusak padi. Mereka menggunakan pestisida sangat berlebihan. Kini serangga hilang, tapi burung pemakan serangga juga pergi, dan panen tetap buruk karena tikus justru bertambah banyak."</p>
+            </div>
+            
+            <div class="p-8 flex-grow flex flex-col justify-center items-center bg-white/40" id="w5-content">
+                <!-- Content populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-quiz" class="screen p-6 pt-24" style="background: linear-gradient(135deg, #fef08a, #fde047);">
+        <div class="max-w-4xl mx-auto glass-panel p-10 min-h-[60vh] flex flex-col relative">
+            
+            <div id="quiz-header" class="flex justify-between items-center mb-8 pb-4 border-b-4 border-yellow-200">
+                <h2 class="text-4xl font-black text-yellow-600 drop-shadow-sm">KUIS EVALUASI</h2>
+                <div class="text-xl font-black bg-white text-yellow-700 px-6 py-2 rounded-full shadow-sm" id="quiz-progress">Soal 1 / 10</div>
+            </div>
+
+            <div id="quiz-body" class="flex-grow flex flex-col justify-center items-center text-center">
+                <p id="quiz-question" class="text-3xl font-bold text-gray-800 mb-10 w-full leading-snug"></p>
+                <div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <div id="quiz-result" class="hidden flex-grow flex-col justify-center items-center text-center">
+                <h2 class="text-5xl font-black text-green-500 mb-4 drop-shadow-sm">HASIL KUIS</h2>
+                <div class="text-[120px] font-black text-yellow-400 mb-6 drop-shadow-md leading-none" id="quiz-score">100</div>
+                <p class="text-2xl font-semibold text-gray-700 mb-10 bg-white/80 px-8 py-4 rounded-3xl" id="quiz-message"></p>
+                <div class="flex gap-6">
+                    <button onclick="quiz.start()" class="btn-game btn-orange text-xl py-4 px-10 rounded-full">ULANGI KUIS</button>
+                    <button onclick="nav.go('screen-reflection')" class="btn-game btn-green text-xl py-4 px-10 rounded-full">LANJUT REFLEKSI</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-reflection" class="screen p-6 pt-24 items-center" style="background: linear-gradient(135deg, #ccfbf1, #5eead4);">
+        <h1 class="text-4xl font-black text-center text-teal-700 mb-8 bg-white/60 px-8 py-2 rounded-full inline-block">Refleksi Pembelajaran</h1>
+        <div class="max-w-4xl w-full glass-panel p-10">
+            <p class="text-2xl font-bold text-gray-700 mb-8 text-center">Mari renungkan apa yang telah kita pelajari hari ini.</p>
+            <div class="space-y-6">
+                <div class="bg-white/80 p-6 rounded-2xl border-4 border-teal-100 shadow-sm">
+                    <p class="font-black text-xl text-teal-700 mb-4">Hari ini saya memahami bahwa...</p>
+                    <div class="h-10 border-b-4 border-dashed border-teal-300 w-full"></div>
+                </div>
+                <div class="bg-white/80 p-6 rounded-2xl border-4 border-teal-100 shadow-sm">
+                    <p class="font-black text-xl text-teal-700 mb-4">Sekarang saya mengetahui pentingnya menjaga...</p>
+                    <div class="h-10 border-b-4 border-dashed border-teal-300 w-full"></div>
+                </div>
+                <div class="bg-white/80 p-6 rounded-2xl border-4 border-teal-100 shadow-sm">
+                    <p class="font-black text-xl text-teal-700 mb-4">Tindakan nyata saya untuk menjaga lingkungan adalah...</p>
+                    <div class="h-10 border-b-4 border-dashed border-teal-300 w-full"></div>
+                </div>
+            </div>
+            <div class="mt-12 text-center">
+                <button onclick="ui.showModal('Hebat!', 'Terima kasih telah merefleksikan belajarmu hari ini. Kamu adalah pahlawan lingkungan!', 'success'); nav.goHome();" class="btn-game btn-green text-2xl py-4 px-12 rounded-full">SELESAI</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-profile" class="screen p-6 pt-24 items-center" style="background: linear-gradient(135deg, #f8fafc, #e2e8f0);">
+        <div class="max-w-2xl w-full glass-panel p-12 text-center mt-10">
+            <div class="w-36 h-36 bg-blue-100 rounded-full mx-auto flex items-center justify-center text-7xl mb-6 shadow-inner border-8 border-white outline outline-4 outline-blue-200">
+                👨‍🏫
+            </div>
+            <h1 class="text-4xl font-black text-slate-800 mb-2">Dindo Noto Sastro, S.Pd.</h1>
+            <p class="text-2xl font-bold text-sky-500 mb-8">Penyusun Aplikasi</p>
+            <div class="bg-white/80 p-8 rounded-3xl text-left border-4 border-slate-100 shadow-sm">
+                <p class="text-xl font-black text-slate-700 mb-3">Aplikasi: Harmoni dalam Ekosistem</p>
+                <p class="text-slate-600 font-semibold text-lg leading-relaxed">Media Pembelajaran Interaktif IPAS Kelas V SD. Dirancang khusus untuk Papan Interaktif Digital (PID) / Interactive Flat Panel (IFP) dengan pendekatan Pembelajaran Mendalam (Deep Learning).</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="modal-overlay">
+    <div class="glass-panel p-10 max-w-md w-full text-center transform transition scale-100" id="modal-box">
+        <div id="modal-icon" class="text-[80px] mb-4 drop-shadow-md">ℹ️</div>
+        <h2 id="modal-title" class="text-3xl font-black mb-4 text-slate-800">Judul</h2>
+        <p id="modal-text" class="text-xl font-semibold text-slate-600 mb-8 leading-relaxed">Pesan</p>
+        <button onclick="ui.hideModal()" class="btn-game btn-blue text-2xl py-4 px-12 rounded-full w-full">OKE</button>
+    </div>
+</div>
+
+<script>
+const audio = {
+    ctx: null,
+    enabled: true,
+    init() {
+        if (!this.ctx) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioContext();
+        }
+        if(this.ctx.state === 'suspended') this.ctx.resume();
+    },
+    toggle() {
+        this.enabled = !this.enabled;
+        document.getElementById('btn-sound').innerHTML = this.enabled ? 
+            '<svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>' :
+            '<svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z m11.414-2l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>';
+    },
+    beep(freq, type, duration, vol=0.1) {
+        if (!this.enabled) return;
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    },
+    playClick() { this.beep(600, 'sine', 0.1); },
+    playSuccess() { 
+        this.beep(400, 'sine', 0.1); 
+        setTimeout(()=>this.beep(600, 'sine', 0.2), 100); 
+    },
+    playError() { 
+        this.beep(300, 'square', 0.2, 0.05); 
+        setTimeout(()=>this.beep(200, 'square', 0.3, 0.05), 150); 
+    }
+};
+
+document.addEventListener('click', (e) => {
+    if(e.target.closest('button') || e.target.closest('.btn-game')) {
+        audio.playClick();
+    }
+});
+
+const ui = {
+    showModal(title, text, type='info') {
+        const icons = { info: '💡', success: '🌟', error: '❌' };
+        const colors = { info: 'border-blue-300', success: 'border-green-400', error: 'border-red-400' };
+        
+        document.getElementById('modal-icon').innerText = icons[type] || icons.info;
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('modal-text').innerText = text;
+        
+        const box = document.getElementById('modal-box');
+        box.className = `glass-panel p-10 max-w-md w-full text-center transform transition scale-100 ${colors[type] || colors.info}`;
+        
+        document.getElementById('modal-overlay').classList.add('active');
+        if(type === 'success') audio.playSuccess();
+        if(type === 'error') audio.playError();
+    },
+    hideModal() {
+        document.getElementById('modal-overlay').classList.remove('active');
+    },
+    toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    }
+};
+
+window.nav = {
+    history: [],
+    current: 'screen-home',
+    go(screenId) {
+        document.getElementById(this.current).classList.remove('active');
+        this.history.push(this.current);
+        this.current = screenId;
+        document.getElementById(this.current).classList.add('active');
+        
+        const btnBack = document.getElementById('btn-back');
+        if (this.current === 'screen-home') {
+            btnBack.classList.add('hidden');
+            this.history = [];
+        } else {
+            btnBack.classList.remove('hidden');
+        }
+        
+        if(screenId === 'screen-w1') w1.init();
+        if(screenId === 'screen-w2') w2.init();
+        if(screenId === 'screen-w3') w3.init();
+        if(screenId === 'screen-w4') w4.init();
+        if(screenId === 'screen-w5') w5.init();
+    },
+    goBack() {
+        if (this.history.length > 0) {
+            const prev = this.history.pop();
+            document.getElementById(this.current).classList.remove('active');
+            this.current = prev;
+            document.getElementById(this.current).classList.add('active');
+            if (this.current === 'screen-home') {
+                document.getElementById('btn-back').classList.add('hidden');
+            }
+        }
+    },
+    goHome() {
+        this.go('screen-home');
+    }
+};
+
+const w1 = {
+    data: [
+        { id: 1, name: 'Padi', type: 'biotik', desc: 'Tumbuhan produsen yang membuat makanannya sendiri dengan bantuan cahaya matahari.', icon: '🌾' },
+        { id: 2, name: 'Katak', type: 'biotik', desc: 'Hewan pemakan serangga (karnivora) yang hidup di dua alam.', icon: '🐸' },
+        { id: 3, name: 'Matahari', type: 'abiotik', desc: 'Sumber energi utama bagi seluruh makhluk hidup di bumi.', icon: '☀️' },
+        { id: 4, name: 'Air', type: 'abiotik', desc: 'Komponen penting yang dibutuhkan makhluk hidup untuk bertahan hidup.', icon: '💧' },
+        { id: 5, name: 'Jamur', type: 'biotik', desc: 'Organisme pengurai yang memecah sisa-sisa makhluk hidup mati.', icon: '🍄' },
+        { id: 6, name: 'Tanah', type: 'abiotik', desc: 'Tempat tumbuhnya tanaman dan penyedia zat hara.', icon: '🟫' }
+    ],
+    selectedId: null,
+    init() {
+        const container = document.getElementById('w1-objects');
+        container.innerHTML = '';
+        this.data.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-game bg-white border-slate-200 text-slate-800 w-32 h-32 text-6xl rounded-3xl transform transition hover:scale-110 flex items-center justify-center';
+            btn.innerHTML = item.icon;
+            btn.onclick = () => this.select(item.id, btn);
+            btn.id = `w1-obj-${item.id}`;
+            container.appendChild(btn);
+        });
+        this.selectedId = null;
+        document.getElementById('w1-info').innerHTML = `
+            <div class="text-7xl mb-4 opacity-50 animate-bounce">👆</div>
+            <h3 class="text-3xl font-black text-slate-500">Pilih satu objek di samping</h3>
+        `;
+    },
+    select(id, btnElement) {
+        document.querySelectorAll('#w1-objects button').forEach(b => {
+            b.classList.remove('border-blue-500');
+            b.classList.add('border-slate-200');
+        });
+        btnElement.classList.remove('border-slate-200');
+        btnElement.classList.add('border-blue-500');
+        this.selectedId = id;
+        
+        const item = this.data.find(d => d.id === id);
+        document.getElementById('w1-info').innerHTML = `
+            <div class="text-[100px] drop-shadow-xl mb-4 transform transition scale-110">${item.icon}</div>
+            <h3 class="text-4xl font-black text-slate-800 mb-3 bg-white/80 px-8 py-2 rounded-full border-4 border-white">${item.name}</h3>
+            <p class="text-xl font-semibold text-slate-700 bg-white/60 p-4 rounded-2xl w-full">${item.desc}</p>
+            <p class="mt-6 inline-block bg-blue-500 text-white border-4 border-blue-300 px-6 py-2 rounded-full font-black text-lg uppercase shadow-lg">Jenis: ${item.type}</p>
+        `;
+    },
+    sort(type) {
+        if (!this.selectedId) {
+            ui.showModal('Pilih Dulu', 'Ketuk objek di atas terlebih dahulu, baru ketuk kotak Biotik atau Abiotik.', 'info');
+            return;
+        }
+        const item = this.data.find(d => d.id === this.selectedId);
+        if (item.type === type) {
+            ui.showModal('Benar!', `${item.name} adalah komponen ${type}. Luar biasa!`, 'success');
+            document.getElementById(`w1-obj-${this.selectedId}`).style.visibility = 'hidden';
+            this.selectedId = null;
+        } else {
+            ui.showModal('Kurang Tepat', `${item.name} BUKAN komponen ${type}. Coba ingat, apakah ia benda hidup atau tak hidup?`, 'error');
+        }
+    }
+};
+
+const w2 = {
+    entities: [
+        { id: 'padi', icon: '🌾', label: 'Padi', role: 'Produsen' },
+        { id: 'belalang', icon: '🦗', label: 'Belalang', role: 'Konsumen I' },
+        { id: 'katak', icon: '🐸', label: 'Katak', role: 'Konsumen II' },
+        { id: 'ular', icon: '🐍', label: 'Ular', role: 'Konsumen III' },
+        { id: 'elang', icon: '🦅', label: 'Elang', role: 'Puncak' }
+    ],
+    slots: [null, null, null, null, null],
+    pool: [],
+    
+    init() {
+        this.pool = [...this.entities].sort(() => Math.random() - 0.5);
+        this.slots = [null, null, null, null, null];
+        this.render();
+    },
+    
+    render() {
+        const slotsEl = document.getElementById('w2-slots');
+        slotsEl.innerHTML = '';
+        this.slots.forEach((item, index) => {
+            const slot = document.createElement('div');
+            
+            if (item) {
+                slot.className = 'btn-game bg-white border-blue-400 w-36 h-48 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer text-slate-800';
+                slot.onclick = () => this.handleSlotClick(index);
+                slot.innerHTML = `<div class="text-[70px] mb-2 drop-shadow-md">${item.icon}</div><div class="font-black text-center leading-tight text-lg">${item.label}<br><span class="text-xs text-blue-700 bg-blue-100 px-3 py-1 rounded-full inline-block mt-1 uppercase">${item.role}</span></div>`;
+            } else {
+                slot.className = 'w-36 h-48 bg-white/40 border-4 border-dashed border-white/80 rounded-[2rem] flex flex-col items-center justify-center relative transition-all';
+                slot.innerHTML = `<span class="text-6xl text-white opacity-60 drop-shadow-sm font-black">+</span>`;
+            }
+            slotsEl.appendChild(slot);
+            
+            if (index < 4) {
+                const arrow = document.createElement('div');
+                arrow.className = 'text-6xl text-red-500 font-black px-1 drop-shadow-sm';
+                arrow.innerHTML = '➔';
+                slotsEl.appendChild(arrow);
+            }
+        });
+
+        const poolEl = document.getElementById('w2-pool');
+        poolEl.innerHTML = '';
+        this.pool.forEach((item, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-game bg-white border-slate-300 p-4 rounded-3xl text-center w-36 transform transition hover:-translate-y-2 text-slate-700';
+            btn.innerHTML = `<div class="text-[60px] mb-2 drop-shadow-sm">${item.icon}</div><div class="font-black text-lg">${item.label}</div>`;
+            btn.onclick = () => this.handlePoolClick(index);
+            poolEl.appendChild(btn);
+        });
+    },
+    
+    handlePoolClick(index) {
+        const emptyIndex = this.slots.findIndex(s => s === null);
+        if (emptyIndex !== -1) {
+            this.slots[emptyIndex] = this.pool[index];
+            this.pool.splice(index, 1);
+            this.render();
+        } else {
+            ui.showModal('Penuh', 'Semua kotak sudah terisi. Ketuk kotak di atas untuk mengembalikannya.', 'info');
+        }
+    },
+    
+    handleSlotClick(index) {
+        if (this.slots[index]) {
+            this.pool.push(this.slots[index]);
+            this.slots[index] = null;
+            this.render();
+        }
+    },
+    
+    check() {
+        if (this.slots.includes(null)) {
+            ui.showModal('Belum Lengkap', 'Susun semua makhluk hidup ke dalam kotak terlebih dahulu.', 'info');
+            return;
+        }
+        
+        const correctOrder = ['padi', 'belalang', 'katak', 'ular', 'elang'];
+        let isCorrect = true;
+        for (let i = 0; i < 5; i++) {
+            if (this.slots[i].id !== correctOrder[i]) isCorrect = false;
+        }
+        
+        if (isCorrect) {
+            ui.showModal('Sempurna!', 'Urutan rantai makananmu sangat tepat! Energi mengalir dari Produsen ke Konsumen.', 'success');
+        } else {
+            ui.showModal('Coba Lagi', 'Urutannya belum tepat. Ingat panah (➔) berarti "Dimakan Oleh".', 'error');
+        }
+    },
+    
+    reset() { this.init(); }
+};
+
+const w3 = {
+    nodes: [
+        { id: 'padi', x: 20, y: 50, icon: '🌾', label: 'Padi' },
+        { id: 'rumput', x: 20, y: 80, icon: '🌱', label: 'Rumput' },
+        { id: 'belalang', x: 50, y: 20, icon: '🦗', label: 'Belalang' },
+        { id: 'tikus', x: 50, y: 50, icon: '🐁', label: 'Tikus' },
+        { id: 'ulat', x: 50, y: 80, icon: '🐛', label: 'Ulat' },
+        { id: 'katak', x: 80, y: 20, icon: '🐸', label: 'Katak' },
+        { id: 'ular', x: 80, y: 50, icon: '🐍', label: 'Ular' },
+        { id: 'elang', x: 80, y: 80, icon: '🦅', label: 'Elang' }
+    ],
+    correctEdges: [
+        'padi-tikus', 'padi-belalang', 'rumput-belalang', 'rumput-ulat',
+        'belalang-katak', 'ulat-katak', 'tikus-ular', 'tikus-elang',
+        'katak-ular', 'ular-elang'
+    ],
+    currentEdges: [],
+    selectedNode: null,
+    
+    init() {
+        this.currentEdges = [];
+        this.selectedNode = null;
+        this.render();
+    },
+    
+    render() {
+        const container = document.getElementById('w3-nodes');
+        container.innerHTML = '';
+        const svg = document.getElementById('w3-svg');
+        
+        svg.innerHTML = `
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="24" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#f43f5e" />
+                </marker>
+                <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+            </defs>
+        `;
+        
+        this.nodes.forEach(node => {
+            const el = document.createElement('button');
+            el.className = `btn-game absolute w-[100px] h-[100px] bg-white rounded-full flex flex-col items-center justify-center -ml-[50px] -mt-[50px] node border-purple-300 text-slate-800 z-10`;
+            el.style.left = `${node.x}%`;
+            el.style.top = `${node.y}%`;
+            el.innerHTML = `<span class="text-5xl drop-shadow-sm mb-1">${node.icon}</span><span class="text-sm font-black bg-white/90 px-3 py-1 rounded-full border-2 border-slate-100 absolute -bottom-4 shadow-sm">${node.label}</span>`;
+            el.onclick = () => this.handleNodeClick(node.id, el);
+            el.id = `w3-node-${node.id}`;
+            container.appendChild(el);
+        });
+        
+        this.drawLines();
+    },
+    
+    handleNodeClick(id, element) {
+        if (!this.selectedNode) {
+            this.selectedNode = id;
+            element.classList.remove('border-purple-300');
+            element.classList.add('border-rose-500', 'scale-110');
+        } else {
+            if (this.selectedNode !== id) {
+                const edgeId = `${this.selectedNode}-${id}`;
+                const reverseEdge = `${id}-${this.selectedNode}`;
+                
+                if (this.currentEdges.includes(edgeId)) {
+                    this.currentEdges = this.currentEdges.filter(e => e !== edgeId);
+                } else if (this.currentEdges.includes(reverseEdge)) {
+                    this.currentEdges = this.currentEdges.filter(e => e !== reverseEdge);
+                } else {
+                    this.currentEdges.push(edgeId);
+                    audio.playClick();
+                }
+            }
+            document.querySelectorAll('#w3-nodes button').forEach(b => {
+                b.classList.remove('border-rose-500', 'scale-110');
+                b.classList.add('border-purple-300');
+            });
+            this.selectedNode = null;
+            this.drawLines();
+        }
+    },
+    
+    drawLines() {
+        const svg = document.getElementById('w3-svg');
+        const defs = svg.querySelector('defs').outerHTML;
+        let linesHTML = '';
+        
+        this.currentEdges.forEach(edge => {
+            const [id1, id2] = edge.split('-');
+            const n1 = this.nodes.find(n => n.id === id1);
+            const n2 = this.nodes.find(n => n.id === id2);
+            
+            linesHTML += `<line x1="${n1.x}%" y1="${n1.y}%" x2="${n2.x}%" y2="${n2.y}%" 
+                          stroke="#f43f5e" stroke-width="8" marker-end="url(#arrowhead)" filter="url(#glow)" opacity="0.9" />`;
+        });
+        
+        svg.innerHTML = defs + linesHTML;
+    },
+    
+    check() {
+        let isCorrect = true;
+        if (this.currentEdges.length !== this.correctEdges.length) isCorrect = false;
+        
+        this.currentEdges.forEach(edge => {
+            if (!this.correctEdges.includes(edge)) isCorrect = false;
+        });
+        
+        if (isCorrect) {
+            ui.showModal('Luar Biasa!', 'Kamu berhasil menyusun jaring-jaring makanan yang rumit ini!', 'success');
+        } else {
+            ui.showModal('Masih Ada yang Kurang', 'Periksa lagi arah panah (siapa dimakan siapa) atau mungkin ada hubungan yang terlewat.', 'error');
+        }
+    }
+};
+
+const w4 = {
+    scenarios: {
+        'A': { title: 'Ular Berkurang', initial: { padi: 50, tikus: 50, ular: 50, elang: 50 }, changes: { padi: 20, tikus: 90, ular: 10, elang: 20 }, msg: 'Jika ular berkurang drastis, TIKUS akan meledak populasinya (hama). Padi akan habis dimakan tikus, dan elang kekurangan makanan.' },
+        'B': { title: 'Katak Menurun', initial: { padi: 50, belalang: 50, katak: 50, ular: 50 }, changes: { padi: 20, belalang: 90, katak: 10, ular: 20 }, msg: 'Tanpa katak, BELALANG akan berkembang biak tanpa kendali, merusak tanaman padi. Ular juga akan kelaparan.' },
+        'C': { title: 'Pestisida Berlebih', initial: { padi: 50, serangga: 50, burung: 50 }, changes: { padi: 60, serangga: 5, burung: 10 }, msg: 'Pestisida membunuh serangga, padi aman sesaat. TAPI, burung pemakan serangga kehilangan makanan dan bisa pergi. Keseimbangan alam rusak.' }
+    },
+    currentId: null,
+    
+    init() {
+        document.getElementById('w4-title').innerText = 'Pilih skenario di samping';
+        document.getElementById('w4-visual').innerHTML = '';
+        document.getElementById('w4-feedback').innerText = 'Klik tombol skenario untuk melihat simulasi.';
+        document.getElementById('btn-w4-reset').classList.add('hidden');
+    },
+    
+    loadScenario(id) {
+        this.currentId = id;
+        const s = this.scenarios[id];
+        document.getElementById('w4-title').innerText = `Simulasi: ${s.title}`;
+        this.renderBars(s.initial);
+        document.getElementById('w4-feedback').innerHTML = `<button onclick="w4.simulate()" class="btn-game btn-blue px-8 py-3 rounded-full font-black text-xl">Jalankan Waktu ⏳</button>`;
+        document.getElementById('btn-w4-reset').classList.add('hidden');
+    },
+    
+    renderBars(data) {
+        const visual = document.getElementById('w4-visual');
+        visual.innerHTML = '';
+        const colors = { padi: 'from-green-300 to-green-500', tikus: 'from-slate-400 to-slate-600', ular: 'from-emerald-600 to-emerald-800', elang: 'from-yellow-400 to-amber-600', belalang: 'from-green-200 to-lime-500', katak: 'from-emerald-300 to-teal-500', serangga: 'from-slate-300 to-zinc-500', burung: 'from-blue-300 to-blue-500' };
+        const emojis = { padi: '🌾', tikus: '🐁', ular: '🐍', elang: '🦅', belalang: '🦗', katak: '🐸', serangga: '🐛', burung: '🐦' };
+        
+        for (let key in data) {
+            const h = data[key];
+            visual.innerHTML += `
+                <div class="flex flex-col items-center justify-end h-full w-28 relative">
+                    <div class="text-[60px] mb-3 drop-shadow-md z-10 floating" style="animation-delay: ${Math.random()}s">${emojis[key]}</div>
+                    <div class="w-full bg-slate-200 border-4 border-white rounded-t-3xl rounded-b-xl overflow-hidden h-full flex items-end shadow-inner">
+                        <div class="w-full bg-gradient-to-t ${colors[key]} transition-all duration-1000 flex items-center justify-center font-black text-white text-xl shadow-[inset_0_4px_10px_rgba(255,255,255,0.4)]" style="height: ${h}%">${h}%</div>
+                    </div>
+                    <div class="font-black mt-4 uppercase text-slate-700 bg-white/90 px-4 py-1 rounded-full text-sm border-2 border-slate-200 shadow-sm">${key}</div>
+                </div>
+            `;
+        }
+    },
+    
+    simulate() {
+        if (!this.currentId) return;
+        const s = this.scenarios[this.currentId];
+        this.renderBars(s.changes);
+        document.getElementById('w4-feedback').innerText = s.msg;
+        document.getElementById('btn-w4-reset').classList.remove('hidden');
+        audio.playClick();
+    },
+    
+    reset() {
+        if (this.currentId) {
+            this.renderBars(this.scenarios[this.currentId].initial);
+            document.getElementById('w4-feedback').innerHTML = `<button onclick="w4.simulate()" class="btn-game btn-blue px-8 py-3 rounded-full font-black text-xl">Jalankan Waktu ⏳</button>`;
+            document.getElementById('btn-w4-reset').classList.add('hidden');
+        }
+    }
+};
+
+const w5 = {
+    step: 1,
+    init() {
+        this.step = 1;
+        this.render();
+    },
+    render() {
+        const container = document.getElementById('w5-content');
+        if (this.step === 1) {
+            container.innerHTML = `
+                <h3 class="text-3xl font-black text-red-600 mb-8 bg-white/80 px-8 py-3 rounded-full shadow-sm">Misi 1: Cari Akar Masalah 🔍</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
+                    <button onclick="w5.wrong()" class="btn-game bg-white text-slate-700 p-6 text-xl rounded-2xl">Tanaman padi diserang burung hantu.</button>
+                    <button onclick="w5.correct()" class="btn-game bg-white border-red-400 text-slate-700 p-6 text-xl rounded-2xl">Pestisida berlebih merusak jaring makanan alam.</button>
+                    <button onclick="w5.wrong()" class="btn-game bg-white text-slate-700 p-6 text-xl rounded-2xl">Tikus sengaja dipelihara oleh warga desa.</button>
+                    <button onclick="w5.wrong()" class="btn-game bg-white text-slate-700 p-6 text-xl rounded-2xl">Tanah sawah kurang mendapatkan pupuk.</button>
+                </div>
+            `;
+        } else if (this.step === 2) {
+            container.innerHTML = `
+                <h3 class="text-3xl font-black text-orange-600 mb-8 bg-white/80 px-8 py-3 rounded-full shadow-sm">Misi 2: Analisis Detektif 🕵️</h3>
+                <p class="mb-8 font-black text-2xl text-center text-slate-700 bg-white/60 p-6 rounded-3xl border-2 border-white shadow-sm">Mengapa tikus makin banyak padahal hama serangga sudah mati?</p>
+                <div class="flex flex-col gap-6 w-full max-w-4xl">
+                    <button onclick="w5.wrong()" class="btn-game bg-white text-slate-700 p-6 text-xl rounded-2xl">Tikus memakan pestisida dan menjadi pahlawan super kebal.</button>
+                    <button onclick="w5.correct()" class="btn-game bg-white border-orange-400 text-slate-700 p-6 text-xl text-left rounded-2xl">Lingkungan beracun membuat predator (ular & burung hantu) pergi/mati, sehingga tikus bebas berkembang biak tanpa musuh alami.</button>
+                </div>
+            `;
+        } else if (this.step === 3) {
+            container.innerHTML = `
+                <h3 class="text-3xl font-black text-green-600 mb-8 bg-white/80 px-8 py-3 rounded-full shadow-sm">Misi 3: Pahlawan Solusi 🦸‍♂️</h3>
+                <p class="mb-8 font-black text-2xl text-center text-slate-700 bg-white/60 p-6 rounded-3xl border-2 border-white shadow-sm">Apa saran terbaik untuk warga desa?</p>
+                <div class="flex flex-col gap-6 w-full max-w-4xl">
+                    <button onclick="w5.wrong()" class="btn-game bg-white text-slate-700 p-6 text-xl text-left rounded-2xl">Menyemprot pestisida lebih kuat lagi khusus untuk membunuh tikus.</button>
+                    <button onclick="w5.correctEnd()" class="btn-game bg-white border-green-400 text-slate-700 p-6 text-xl text-left rounded-2xl">Kurangi pestisida kimia! Gunakan pembasmi hama alami dan jaga rumah bagi burung hantu serta ular sawah.</button>
+                </div>
+            `;
+        }
+    },
+    wrong() {
+        ui.showModal('Kurang Tepat', 'Analisis lagi cerita kasus di atas. Perhatikan hubungan sebab-akibatnya.', 'error');
+    },
+    correct() {
+        audio.playSuccess();
+        this.step++;
+        this.render();
+    },
+    correctEnd() {
+        ui.showModal('Luar Biasa!', 'Kamu berhasil menyelesaikan misi dan mendapatkan Lencana Penjaga Ekosistem! Solusimu sangat bijaksana.', 'success');
+        this.init();
+        nav.go('screen-map');
+    }
+};
+
+const quiz = {
+    questions: [
+        { q: "Apa peran tumbuhan hijau (seperti padi) dalam ekosistem?", o: ["Produsen", "Konsumen I", "Konsumen Puncak", "Pengurai"], a: 0 },
+        { q: "Organisme yang memakan produsen secara langsung disebut...", o: ["Karnivora", "Herbivora", "Omnivora", "Pengurai"], a: 1 },
+        { q: "Arah panah (➔) dalam diagram rantai makanan menunjukkan...", o: ["Siapa yang lebih kuat", "Perpindahan energi", "Arah angin", "Tempat tinggal"], a: 1 },
+        { q: "Jika populasi katak menurun drastis karena penyakit, apa yang mungkin terjadi pada belalang?", o: ["Populasinya tetap", "Populasinya menurun", "Populasinya meningkat", "Semua belalang mati"], a: 2 },
+        { q: "Kumpulan dari beberapa rantai makanan yang saling berhubungan disebut...", o: ["Rantai panjang", "Piramida makanan", "Jaring-jaring makanan", "Ekosistem raksasa"], a: 2 },
+        { q: "Komponen abiotik yang merupakan sumber energi utama di bumi adalah...", o: ["Air", "Tanah", "Batu", "Matahari"], a: 3 },
+        { q: "Perhatikan urutan ini: Rumput ➔ X ➔ Ular ➔ Elang. Hewan yang tepat mengisi X adalah...", o: ["Harimau", "Tikus", "Singa", "Burung Elang"], a: 1 },
+        { q: "Jamur dan bakteri dalam ekosistem berperan sebagai...", o: ["Produsen", "Konsumen", "Pengurai", "Predator"], a: 2 },
+        { q: "Mengapa menebang hutan sembarangan merusak ekosistem?", o: ["Karena banyak kayu terbang", "Karena menghilangkan habitat dan sumber makanan hewan", "Karena menyebabkan hujan lebat", "Karena membuat daun berjatuhan"], a: 1 },
+        { q: "Tindakan nyata yang BUKAN merupakan upaya menjaga keseimbangan ekosistem adalah...", o: ["Reboisasi (penanaman kembali)", "Membuang sampah pada tempatnya", "Berburu hewan liar langka", "Menggunakan pupuk secukupnya"], a: 2 }
+    ],
+    currentIndex: 0,
+    score: 0,
+    
+    start() {
+        this.questions.sort(() => Math.random() - 0.5);
+        this.currentIndex = 0;
+        this.score = 0;
+        document.getElementById('quiz-result').classList.add('hidden');
+        document.getElementById('quiz-body').classList.remove('hidden');
+        document.getElementById('quiz-header').classList.remove('hidden');
+        nav.go('screen-quiz');
+        this.showQuestion();
+    },
+    
+    showQuestion() {
+        const q = this.questions[this.currentIndex];
+        document.getElementById('quiz-progress').innerText = `Soal ${this.currentIndex + 1} / ${this.questions.length}`;
+        document.getElementById('quiz-question').innerText = q.q;
+        
+        const optsContainer = document.getElementById('quiz-options');
+        optsContainer.innerHTML = '';
+        
+        q.o.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-game bg-white border-yellow-400 text-2xl p-6 rounded-3xl text-slate-700 flex items-center justify-center min-h-[120px] leading-tight hover:bg-yellow-50';
+            btn.innerText = opt;
+            btn.onclick = () => this.answer(idx);
+            optsContainer.appendChild(btn);
+        });
+    },
+    
+    answer(selectedIdx) {
+        const q = this.questions[this.currentIndex];
+        if (selectedIdx === q.a) {
+            this.score++;
+            audio.playSuccess();
+        } else {
+            audio.playError();
+        }
+        
+        this.currentIndex++;
+        if (this.currentIndex < this.questions.length) {
+            this.showQuestion();
+        } else {
+            this.showResult();
+        }
+    },
+    
+    showResult() {
+        document.getElementById('quiz-body').classList.add('hidden');
+        document.getElementById('quiz-header').classList.add('hidden');
+        const res = document.getElementById('quiz-result');
+        res.classList.remove('hidden');
+        res.classList.add('flex');
+        
+        const finalScore = Math.round((this.score / this.questions.length) * 100);
+        document.getElementById('quiz-score').innerText = finalScore;
+        
+        let msg = '';
+        if(finalScore >= 80) msg = 'Luar Biasa! Level Tertinggi Dicapai! 🌟🌟🌟';
+        else if (finalScore >= 60) msg = 'Kerja Bagus! Kamu hampir menguasai semuanya! 🌟🌟';
+        else msg = 'Tetap Semangat! Ayo latihan petualangan sekali lagi! 🌟';
+        
+        document.getElementById('quiz-message').innerText = msg;
+    }
+};
+</script>
+</body>
+</html>
